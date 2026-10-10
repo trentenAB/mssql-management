@@ -1,0 +1,48 @@
+stages: [test, publish]
+
+test:
+  stage: test
+  image: python:3.12-slim-bookworm
+  script:
+    - pip install -r requirements-dev.txt
+    - pytest -q
+
+# Requires a runner that supports privileged Docker-in-Docker with TLS.
+publish-gitlab:
+  stage: publish
+  image: docker:28-cli
+  services:
+    - name: docker:28-dind
+      alias: docker
+  variables:
+    DOCKER_HOST: tcp://docker:2376
+    DOCKER_TLS_CERTDIR: /certs
+    DOCKER_TLS_VERIFY: '1'
+    DOCKER_CERT_PATH: /certs/client
+  before_script:
+    - apk add --no-cache bash git
+  script:
+    - IMAGE_TAG="$CI_COMMIT_SHORT_SHA" bash scripts/push-gitlab.sh
+  rules:
+    - if: '$CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH'
+      when: manual
+
+# Supply masked AWS credentials (or configure an AWS federation role separately).
+publish-ecr:
+  stage: publish
+  image: docker:28-cli
+  services:
+    - name: docker:28-dind
+      alias: docker
+  variables:
+    DOCKER_HOST: tcp://docker:2376
+    DOCKER_TLS_CERTDIR: /certs
+    DOCKER_TLS_VERIFY: '1'
+    DOCKER_CERT_PATH: /certs/client
+  before_script:
+    - apk add --no-cache bash git aws-cli
+  script:
+    - IMAGE_TAG="$CI_COMMIT_SHORT_SHA" bash scripts/push-ecr.sh
+  rules:
+    - if: '$CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH'
+      when: manual

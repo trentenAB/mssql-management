@@ -1,0 +1,15 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>{% block title %}SQL Chronicle · Object history{% endblock %}</title>
+<link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+<script src="{{ url_for('static', filename='app.js') }}" defer></script>
+</head>
+<body>
+<header class="topbar"><a class="brand" href="{{ url_for('index') }}"><span class="logo">S</span> SQL<span class="muted">Chronicle</span></a><span class="workspace">/ &nbsp; Database workspace</span><div class="top-right"><span class="status-dot"></span><span>{{ 'Demo · read only' if demo else database_name }}</span>{% if connected %}<form action="{{ url_for('logout') }}" method="post"><input type="hidden" name="csrf_token" value="{{ csrf_token }}"><button class="text-button">Sign out</button></form>{% endif %}</div></header>
+{% if demo %}<div class="notice">DEMO WORKSPACE <span>Sample history only. No database is connected. Set DEMO_MODE=false to use your SQL Server credentials.</span></div>{% endif %}
+{% with messages = get_flashed_messages(with_categories=true) %}{% for category,message in messages %}<div class="flash {{ category }}" role="status">{{ message }}</div>{% endfor %}{% endwith %}
+{% block content %}{% endblock %}
+<footer>SQL CHRONICLE <span>Audit-backed history · timestamps in UTC</span></footer>
+</body></html>

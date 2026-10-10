@@ -1,0 +1,22 @@
+services:
+  web:
+    build: .
+    ports:
+      - "127.0.0.1:8000:8000"
+    environment:
+      DEMO_MODE: ${DEMO_MODE:-true}
+      FLASK_SECRET_KEY: ${FLASK_SECRET_KEY:-}
+      SQLSERVER_HOST: ${SQLSERVER_HOST:-}
+      SQLSERVER_DATABASE: ${SQLSERVER_DATABASE:-}
+      AUDIT_FILE_PATTERN: ${AUDIT_FILE_PATTERN:-}
+      COOKIE_SECURE: ${COOKIE_SECURE:-false}
+      HISTORY_DATABASE: /data/${HISTORY_FILENAME:-demo.sqlite3}
+    volumes:
+      - history:/data
+    restart: unless-stopped
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+volumes:
+  history:
