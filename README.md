@@ -7,8 +7,9 @@ A Python/Flask workspace for SQL Server object history, audit provenance, versio
 ## Features
 
 - History for views, stored procedures, functions, tables, and other named audited objects.
-- Each recorded event shows its original SQL login, UTC timestamp, action name, action ID, and SQL text.
-- Compare **any two recorded versions of the same object**, including reversed comparisons. Copy the selected SQL.
+- Each recorded event shows its original SQL login, UTC timestamp, action name, action ID, and SQL text. Version numbers start at **#1 for each object**, in chronological order; the newest version is listed first. Importing earlier audit history updates the display numbering while existing record links remain valid.
+- Filter the version-history table by an exact version number (with or without `#`), change name/action ID, author, inclusive UTC date range, and status. Filters combine, work immediately, and can be cleared together. Comparison choices still include every version.
+- Compare **any two recorded versions of the same object**, including reversed comparisons. Copy the selected SQL; the button returns to **Copy SQL** three seconds after success or failure.
 - Read server-side `.sqlaudit` files with `sys.fn_get_audit_file`; resolve action IDs from `sys.dm_audit_actions` on the actual server.
 - Reassemble sequenced audit fragments and deduplicate repeated imports in SQLite.
 - Sign in with **your own SQL Server username/password** in connected mode. Deploy complete view/procedure/function definitions using that login's effective permissions. No shared elevated deployment account.
@@ -213,7 +214,7 @@ Optional repeatable browser checks against a running **demo** instance:
 
 Tests exercise history/diffs, escaping and CSRF, demo write rejection, SQL login credential handling, cross-object comparison rejection, duplicate imports, audit fragment completeness, permission denial, stale-definition detection, transactional rollback, and deployment attribution. SQL Server calls are simulated in the tests; they do not substitute for live integration testing.
 
-Browser checks use Chromium to verify all sample object types, search, filters, comparison/reversal, and mobile layout. Screenshots are included. See ISSUES.md for the recorded validation results.
+Browser checks use Chromium to verify object-local numbering, all sample object types, combined history filters and date boundaries, copy-button feedback and reset, comparison/reversal, and mobile layout. Screenshots are included. See ISSUES.md for the recorded validation results.
 
 ### Builds behind a trusted corporate proxy
 

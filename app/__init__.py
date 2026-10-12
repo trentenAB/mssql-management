@@ -151,7 +151,7 @@ def create_app(config=None):
         current_label = 'Latest recorded · assumed'
         deployments = []
         if obj:
-            versions = g.db.execute('SELECT * FROM versions WHERE object_id=? ORDER BY occurred_at DESC,id DESC', (obj['id'],)).fetchall()
+            versions = store.versions_for_object(g.db, obj['id'])
             definitions = [v for v in versions if v['action'] in ('CREATE','ALTER')]
             current_id = definitions[0]['id'] if definitions else None
             if g.backend:
@@ -184,6 +184,7 @@ def create_app(config=None):
         return render_template('index.html', objects=objects, obj=obj, versions=versions, left=left, right=right,
             diff_rows=diff_rows, live_state=live_state, live_error=live_error, current_id=current_id,
             current_label=current_label, deployments=deployments,
+            version_numbers={v['id']:v['version_number'] for v in versions},
             added=sum(r[0]=='insert' for r in diff_rows), removed=sum(r[0]=='delete' for r in diff_rows))
 
     @app.post('/import')
@@ -208,7 +209,7 @@ def create_app(config=None):
     def apply_version(version_id):
         if app.config['DEMO_MODE'] or not g.backend:
             abort(403, 'Demo mode is read-only. Connect with your own SQL login to deploy.')
-        version = g.db.execute('SELECT * FROM versions WHERE id=?', (version_id,)).fetchone()
+        version = store.version_by_id(g.db, version_id)
         if not version:
             abort(404)
         obj = g.db.execute('SELECT * FROM objects WHERE id=?', (version['object_id'],)).fetchone()
@@ -235,7 +236,7 @@ def create_app(config=None):
             except Exception:
                 flash('SQL deployment committed, but local deployment history could not be saved. Reload to verify the live definition.', 'error')
             else:
-                flash(f'Applied version #{version_id} as {actor}.', 'success')
+                flash(f"Applied version #{version['version_number']} as {actor}.", 'success')
         return redirect(url_for('index', object=obj['id'], right=version_id))
 
     @app.errorhandler(400)

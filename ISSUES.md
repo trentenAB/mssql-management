@@ -17,6 +17,9 @@
 
 ## Problems encountered and corrected
 
+- Object versions previously displayed global history record IDs (for example a procedure starting at #4). Display numbering now starts at #1 for each object across history, comparison, current status, deployment confirmation, and deployment logs. Internal record IDs are retained for correct targeting.
+- Copy feedback previously remained indefinitely. Success and failure messages now return to Copy SQL after three seconds, and a repeated click restarts that interval.
+
 - Bare `pytest` did not initially find the `app` package. Added `pytest.ini` with an explicit project-root Python path.
 - sqlparse's generic statement splitter incorrectly separated one valid procedure containing `COUNT(*) AS …`. Added a conservative token-based balanced-block fallback and tests for valid bodies and rejected trailing statements.
 - Cloud Docker's default config path was read-only. Build validation uses a task-owned Docker config under `/tmp`.
@@ -26,8 +29,8 @@
 
 ## Validation evidence
 
-- **34 automated tests passed**, covering Flask workflows, session handling, audit parsing, and deployment commit/rollback with simulated SQL Server responses.
-- Chromium browser workflow: history, all four demo object types, search, type filters, arbitrary version selection, swapped comparison, and mobile width checked; no JavaScript errors.
+- **40 automated tests passed**, covering Flask workflows, session handling, audit parsing, and deployment commit/rollback with simulated SQL Server responses.
+- Chromium browser workflow: history, per-object version numbering, combined column filters, inclusive/open-ended/invalid date ranges, filter reset, clipboard feedback/reset (including repeated clicks and clipboard denial), arbitrary version selection, swapped comparison, and mobile layout checked; no JavaScript errors.
 - Desktop and mobile screenshots saved in the project root.
 - **Docker image built and ran successfully** as UID 10001 with Microsoft ODBC Driver 18. The functional HTTP check passed; the named-volume history retained exactly nine demo events through container recreation and restart. Compose configuration and shell syntax checks passed.
 - Live SQL Server audit/deployment: **not run** (no server supplied).

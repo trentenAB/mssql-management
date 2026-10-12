@@ -73,3 +73,22 @@ def add_event(db, event):
 
 def utcnow():
     return datetime.now(timezone.utc).isoformat()
+
+
+NUMBERED_VERSIONS = '''SELECT *,
+    ROW_NUMBER() OVER (PARTITION BY object_id ORDER BY occurred_at, id) AS version_number
+    FROM versions'''
+
+
+def versions_for_object(db, object_id):
+    """Number each object's full timeline while retaining immutable record IDs."""
+    return db.execute(NUMBERED_VERSIONS +
+                      ' WHERE object_id=? ORDER BY occurred_at DESC, id DESC',
+                      (object_id,)).fetchall()
+
+
+def version_by_id(db, version_id):
+    return db.execute('WITH numbered AS (' + NUMBERED_VERSIONS +
+                      ' WHERE object_id=(SELECT object_id FROM versions WHERE id=?))'
+                      ' SELECT * FROM numbered WHERE id=?',
+                      (version_id, version_id)).fetchone()

@@ -44,6 +44,34 @@ def test_demo_seeding_is_repeatable(app):
         assert db.execute('SELECT count(*) FROM versions').fetchone()[0] == 9
 
 
+@pytest.mark.parametrize('object_id, record_ids', [
+    (1, [3, 2, 1]), (2, [5, 4]), (3, [6]), (4, [9, 8, 7]),
+])
+def test_versions_start_at_one_for_each_existing_object(app, client, object_id, record_ids):
+    with store.connect(app.config['DATABASE']) as db:
+        versions = store.versions_for_object(db, object_id)
+        assert [v['id'] for v in versions] == record_ids
+        assert [v['version_number'] for v in versions] == list(range(len(record_ids), 0, -1))
+        for v in versions:
+            assert store.version_by_id(db, v['id'])['version_number'] == v['version_number']
+    body = client.get(f'/?object={object_id}&right={record_ids[-1]}').get_data(as_text=True)
+    assert 'Selected version <span class="muted">#1</span>' in body
+    assert f'value="{record_ids[-1]}" selected>#1 ·' in body
+
+
+def test_earlier_audit_imports_are_numbered_chronologically_without_changing_ids(app):
+    with store.connect(app.config['DATABASE']) as db:
+        event = dict(db.execute('SELECT * FROM versions WHERE id=5').fetchone())
+        event.update(database_name='CommerceDemo', schema_name='dbo', name='GetOrderSummary',
+                     kind='PROCEDURE', event_key='earlier-import', occurred_at='2025-12-01T00:00:00Z')
+        store.add_event(db, event)
+        versions = store.versions_for_object(db, 2)
+        assert [v['id'] for v in versions] == [5, 4, 10]
+        assert [v['version_number'] for v in versions] == [3, 2, 1]
+        assert store.version_by_id(db, 4)['version_number'] == 2
+        assert store.version_by_id(db, 9999) is None
+
+
 class FakeBackend:
     allowed = True
     definition = 'CREATE VIEW dbo.ActiveCustomers AS SELECT 1;'
@@ -157,3 +185,26 @@ def test_selected_applied_version_wins_when_definitions_are_identical(app, conne
     backend.definition = definition
     body=client.get('/?object=1').get_data(as_text=True)
     assert 'Version #1 · Verified against live database' in body
+
+
+def test_applying_object_local_version_keeps_original_record_id(app, connected):
+    client, backend = connected
+    with store.connect(app.config['DATABASE']) as db:
+        db.execute("UPDATE versions SET source='audit' WHERE id=4")
+    token = csrf(client)
+    before = client.get('/?object=2&right=4').get_data(as_text=True)
+    assert 'Apply version #1' in before
+    assert 'action="/versions/4/apply"' in before
+    response = client.post('/versions/4/apply', data={
+        'csrf_token': token, 'confirm': 'dbo.GetOrderSummary', 'fingerprint': 'current-hash',
+    }, follow_redirects=True)
+    body = response.get_data(as_text=True)
+    assert response.status_code == 200
+    assert 'Applied version #1 as real.sql.login.' in body
+    assert 'Version #1 · Verified against live database' in body
+    assert 'Version #1 · real.sql.login ·' in body
+    assert backend.applied
+    assert 'GetOrderSummary' in backend.definition
+    with store.connect(app.config['DATABASE']) as db:
+        assert db.execute('SELECT applied_version_id FROM objects WHERE id=2').fetchone()[0] == 4
+        assert db.execute('SELECT version_id FROM deployments WHERE object_id=2').fetchone()[0] == 4
